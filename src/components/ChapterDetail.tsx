@@ -64,7 +64,7 @@ export default function ChapterDetail({ chapter: initial }: Props) {
     [scheduleSave],
   );
 
-  function changePageCount(next: PageCount) {
+  async function changePageCount(next: PageCount) {
     if (next === chapter.pageCount) return;
     if (next < chapter.pageCount) {
       const droppedNotes = chapter.pages
@@ -78,7 +78,16 @@ export default function ChapterDetail({ chapter: initial }: Props) {
         if (!ok) return;
       }
     }
-    updateField({ pageCount: next });
+    // Page count is a structural change — save immediately (no debounce) and reload
+    // so the server-rendered sidebar/totals/"pages remaining" all catch up.
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaving(true);
+    await fetch(url(`/api/chapters/${chapter.id}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...latest.current, pageCount: next }),
+    });
+    window.location.reload();
   }
 
   const statusText = saving ? 'Saving…' : dirty ? 'Unsaved' : saved ? 'Saved' : '';
