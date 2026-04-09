@@ -1,0 +1,11 @@
+---
+import Layout from '../layouts/Layout.astro';
+import StoryEditor from '../components/StoryEditor';
+import { getSettings } from '../lib/data';
+
+const settings = getSettings();
+---
+
+<Layout title="Story & Ambiance">
+  <StoryEditor settings={settings} client:load />
+</Layout>

@@ -1,0 +1,11 @@
+---
+import Layout from '../layouts/Layout.astro';
+import SettingsPanel from '../components/SettingsPanel';
+import { getSettings } from '../lib/data';
+
+const settings = getSettings();
+---
+
+<Layout title="Settings">
+  <SettingsPanel settings={settings} client:load />
+</Layout>

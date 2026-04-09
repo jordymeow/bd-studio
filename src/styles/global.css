@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Geist:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Pure black — matches the shadcn dashboard demo */
+  --color-bg: #0e0e0e;
+  --color-surface: #1a1a1a;
+  --color-surface-light: #242424;
+  --color-border: #242424;
+  --color-text: #fafafa;
+  --color-text-muted: #737373;
+
+  /* Sidebar — slightly lighter than main */
+  --color-sidebar: #141414;
+  --color-sidebar-hover: #1f1f1f;
+
+  /* Accent — soft green */
+  --color-accent: #4ade80;
+  --color-accent-hover: #86efac;
+
+  /* Semantic */
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #60a5fa;
+
+  /* Font */
+  --font-sans: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Collapsible sidebar */
+.sidebar-collapsed #sidebar { width: 3rem; }
+.sidebar-collapsed #main { margin-left: 3rem; }
+.sidebar-collapsed .sidebar-label { display: none; }
+
+/* Custom checkbox */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+input[type="checkbox"]:checked {
+  background: var(--color-text);
+  border-color: var(--color-text);
+}
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--color-bg);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+input[type="checkbox"]:hover {
+  border-color: var(--color-text-muted);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}

@@ -1,0 +1,19 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import PageEditor from '../../../../components/PageEditor';
+import { getChapter } from '../../../../lib/data';
+
+const { id, pageId } = Astro.params;
+const chapter = getChapter(id!);
+
+if (!chapter) {
+  return Astro.redirect(import.meta.env.BASE_URL);
+}
+
+const page = chapter.pages.find(p => p.id === pageId);
+const title = page ? `${chapter.title} — page ${page.order}` : chapter.title;
+---
+
+<Layout title={title}>
+  <PageEditor chapter={chapter} pageId={pageId!} client:load />
+</Layout>

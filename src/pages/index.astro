@@ -1,0 +1,12 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BookOverview from '../components/BookOverview';
+import { getChapters, getSettings } from '../lib/data';
+
+const chapters = getChapters();
+const settings = getSettings();
+---
+
+<Layout title="Chapters">
+  <BookOverview chapters={chapters} totalPages={settings.totalPages} client:load />
+</Layout>

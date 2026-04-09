@@ -1,0 +1,11 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CharacterManager from '../components/CharacterManager';
+import { getCharacters } from '../lib/data';
+
+const characters = getCharacters();
+---
+
+<Layout title="Characters">
+  <CharacterManager characters={characters} client:load />
+</Layout>

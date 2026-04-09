@@ -1,0 +1,128 @@
+---
+import '../styles/global.css';
+import { getChapters, getSettings } from '../lib/data';
+import { getColorScheme, colorSchemeToCssVars } from '../lib/color-schemes';
+import { BookOpen, Users, Sparkles, Download, Settings, FileText, PanelLeft } from '@lucide/astro';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const currentPath = Astro.url.pathname.replace(base, '') || '/';
+const chapters = getChapters();
+const settings = getSettings();
+const scheme = getColorScheme(settings.colorScheme);
+const schemeStyles = colorSchemeToCssVars(scheme);
+
+const navItems = [
+  { href: '/', label: 'Chapters', icon: BookOpen },
+  { href: '/characters', label: 'Characters', icon: Users },
+  { href: '/story', label: 'Story', icon: Sparkles },
+  { href: '/export', label: 'Export', icon: Download },
+  { href: '/settings', label: 'Settings', icon: Settings },
+];
+
+const usedPages = chapters.reduce((sum, c) => sum + c.pageCount, 0);
+const targetPages = settings.totalPages;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} — {settings.title || 'BD Editor'}</title>
+    <script is:inline define:vars={{ base }}>
+      window.__BASE_URL__ = base;
+      const stored = localStorage.getItem('sidebar-collapsed');
+      if (stored === 'true') document.documentElement.classList.add('sidebar-collapsed');
+    </script>
+  </head>
+  <body class="min-h-screen flex bg-bg" style={schemeStyles}>
+    <aside id="sidebar" class="w-60 bg-sidebar border-r border-border flex flex-col fixed h-full z-10 transition-all duration-200">
+      <div class="px-4 py-3.5 flex items-center gap-2">
+        <a href={`${base}/`} class="flex items-center gap-2 text-sm font-semibold text-text">
+          <span class="w-5 h-5 rounded-sm border border-accent/60 flex items-center justify-center shrink-0">
+            <span class="w-1.5 h-2 bg-accent"></span>
+          </span>
+          <span class="sidebar-label truncate">{settings.title || 'BD Editor'}</span>
+        </a>
+      </div>
+
+      {/* Chapters — main work area */}
+      <nav class="flex-1 px-2 pt-2 overflow-y-auto overflow-x-hidden">
+        {chapters.length > 0 ? (
+          <>
+            <p class="sidebar-label px-2.5 mb-1 text-xs text-text-muted flex items-center justify-between">
+              <span>Chapters</span>
+              <span class="text-text-muted/60">{usedPages} / {targetPages}p</span>
+            </p>
+            <div class="space-y-px">
+              {chapters.map(ch => {
+                const isActive = currentPath === `/chapters/${ch.id}` || currentPath.startsWith(`/chapters/${ch.id}/`);
+                return (
+                  <a
+                    href={`${base}/chapters/${ch.id}`}
+                    class:list={[
+                      'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors',
+                      isActive ? 'bg-surface text-text' : 'text-text-muted hover:text-text hover:bg-surface'
+                    ]}
+                    title={`${ch.title} — ${ch.pageCount} pages`}
+                  >
+                    <FileText size={16} class:list={['shrink-0', isActive && 'text-accent']} />
+                    <span class="sidebar-label truncate flex-1">{ch.title}</span>
+                    <span class="sidebar-label text-xs text-text-muted/60 shrink-0">{ch.pageCount}p</span>
+                  </a>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <p class="sidebar-label px-2.5 py-4 text-xs text-text-muted italic">No chapters yet</p>
+        )}
+      </nav>
+
+      {/* Secondary nav */}
+      <div class="border-t border-border p-2 space-y-px">
+        {navItems.map(item => {
+          const Icon = item.icon;
+          const isActive = currentPath === item.href;
+          return (
+            <a
+              href={`${base}${item.href}`}
+              class:list={[
+                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors',
+                isActive ? 'bg-surface text-text' : 'text-text-muted hover:text-text hover:bg-surface'
+              ]}
+            >
+              <Icon size={16} class:list={['shrink-0', isActive && 'text-accent']} />
+              <span class="sidebar-label">{item.label}</span>
+            </a>
+          );
+        })}
+      </div>
+    </aside>
+    <main id="main" class="ml-60 flex-1 min-h-screen transition-all duration-200">
+      <div class="px-6 py-3 flex items-center gap-3">
+        <button id="sidebar-toggle" class="p-1 -ml-1 rounded text-text-muted hover:text-text hover:bg-surface transition-colors">
+          <PanelLeft size={16} />
+        </button>
+        <div class="w-px h-4 bg-border"></div>
+        <h2 class="text-sm font-medium">{title}</h2>
+      </div>
+      <div class="px-6 pb-6">
+        <slot />
+      </div>
+    </main>
+
+    <script is:inline>
+      const html = document.documentElement;
+      const toggle = document.getElementById('sidebar-toggle');
+      toggle?.addEventListener('click', () => {
+        html.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('sidebar-collapsed', html.classList.contains('sidebar-collapsed'));
+      });
+    </script>
+  </body>
+</html>
