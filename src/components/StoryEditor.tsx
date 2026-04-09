@@ -62,30 +62,16 @@ export default function StoryEditor({ settings: initial }: Props) {
         {statusText && <span className="text-xs text-text-muted">{statusText}</span>}
       </div>
 
-      <div className="space-y-8">
-        <div>
-          <label className="block text-xs text-text-muted uppercase tracking-wider mb-2">
-            Overall story
-          </label>
-          <Textarea
-            value={settings.story}
-            onChange={e => update({ story: e.target.value })}
-            placeholder="The big picture — premise, the arc across all chapters, the ending you're aiming for…"
-            rows={12}
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs text-text-muted uppercase tracking-wider mb-2">
-            Ambiance
-          </label>
-          <Textarea
-            value={settings.ambiance}
-            onChange={e => update({ ambiance: e.target.value })}
-            placeholder="Tone, mood, color palette, visual references, art direction notes for Dreamy…"
-            rows={10}
-          />
-        </div>
+      <div>
+        <label className="block text-xs text-text-muted uppercase tracking-wider mb-2">
+          Overall story
+        </label>
+        <Textarea
+          value={settings.story}
+          onChange={e => update({ story: e.target.value })}
+          placeholder="The big picture — premise, the arc across all chapters, the ending you're aiming for…"
+          rows={20}
+        />
       </div>
     </div>
   );

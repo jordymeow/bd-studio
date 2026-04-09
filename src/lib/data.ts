@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { BookSettings, Chapter, Character, Page, PageCount } from './types';
+import type { BookSettings, Chapter, Character, MoodBoard, MoodBoardImage, Page, PageCount } from './types';
 import { PAGE_COUNTS } from './types';
 import { generateId } from './id';
 
@@ -10,6 +10,8 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const CHAPTERS_FILE = path.join(DATA_DIR, 'chapters.json');
 const CHARACTERS_FILE = path.join(DATA_DIR, 'characters.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const MOODBOARD_FILE = path.join(DATA_DIR, 'mood-board.json');
+export const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -144,14 +146,51 @@ const DEFAULT_SETTINGS: BookSettings = {
   author: 'Jordy',
   illustrator: 'Dreamy',
   story: '',
-  ambiance: '',
   totalPages: 72,
 };
 
 export function getSettings(): BookSettings {
-  return { ...DEFAULT_SETTINGS, ...readJson<Partial<BookSettings>>(SETTINGS_FILE, {}) };
+  // Strip legacy `ambiance` field — it now lives in ambiance.json.
+  // getAmbiance() handles the one-time migration from the old location.
+  const raw = readJson<Partial<BookSettings> & { ambiance?: string }>(SETTINGS_FILE, {});
+  const { ambiance: _legacy, ...clean } = raw;
+  return { ...DEFAULT_SETTINGS, ...clean };
 }
 
 export function saveSettings(settings: BookSettings) {
   writeJson(SETTINGS_FILE, settings);
+}
+
+// ─── Mood board ───────────────────────────────────────────────────────
+
+const DEFAULT_MOODBOARD: MoodBoard = { images: [] };
+
+export function getMoodBoard(): MoodBoard {
+  if (fs.existsSync(MOODBOARD_FILE)) {
+    return { ...DEFAULT_MOODBOARD, ...readJson<Partial<MoodBoard>>(MOODBOARD_FILE, {}) };
+  }
+  // On first read, seed an empty mood board file so subsequent reads are cheap.
+  saveMoodBoard(DEFAULT_MOODBOARD);
+  return DEFAULT_MOODBOARD;
+}
+
+export function saveMoodBoard(moodBoard: MoodBoard) {
+  writeJson(MOODBOARD_FILE, moodBoard);
+}
+
+export function addMoodBoardImage(image: MoodBoardImage) {
+  const board = getMoodBoard();
+  board.images.push(image);
+  saveMoodBoard(board);
+  return image;
+}
+
+/** Remove an image's metadata and return its filename so the caller can delete the file. */
+export function removeMoodBoardImage(id: string): string | null {
+  const board = getMoodBoard();
+  const image = board.images.find(i => i.id === id);
+  if (!image) return null;
+  board.images = board.images.filter(i => i.id !== id);
+  saveMoodBoard(board);
+  return image.filename;
 }

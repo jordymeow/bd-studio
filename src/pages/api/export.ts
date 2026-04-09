@@ -1,10 +1,11 @@
 import type { APIRoute } from 'astro';
-import { getChapters, getCharacters, getSettings } from '../../lib/data';
+import { getChapters, getCharacters, getMoodBoard, getSettings } from '../../lib/data';
 
 export const GET: APIRoute = async () => {
   return Response.json({
     settings: getSettings(),
     chapters: getChapters(),
     characters: getCharacters(),
+    moodBoard: getMoodBoard(),
   });
 };

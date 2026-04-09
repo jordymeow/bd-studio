@@ -7,9 +7,20 @@ export interface BookSettings {
   author: string;       // Jordy
   illustrator: string;  // Dreamy
   story: string;        // long-form: overall story arc
-  ambiance: string;     // long-form: tone, mood, references
   totalPages: number;   // target page count for the album — must be a positive multiple of 8
   colorScheme?: string;
+}
+
+export interface MoodBoardImage {
+  id: string;           // "img-xxxxxxxx"
+  filename: string;     // stored on disk as <id>.<ext>
+  originalName: string; // original upload filename, shown as fallback
+  caption: string;      // free-form note for this image — shown in the tile and in the lightbox
+  uploadedAt: string;   // ISO timestamp
+}
+
+export interface MoodBoard {
+  images: MoodBoardImage[];
 }
 
 export interface Page {

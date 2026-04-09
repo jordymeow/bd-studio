@@ -1,0 +1,11 @@
+---
+import Layout from '../layouts/Layout.astro';
+import MoodBoard from '../components/MoodBoard';
+import { getMoodBoard } from '../lib/data';
+
+const moodBoard = getMoodBoard();
+---
+
+<Layout title="Mood Board">
+  <MoodBoard moodBoard={moodBoard} client:load />
+</Layout>
