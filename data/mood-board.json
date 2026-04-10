@@ -7,7 +7,7 @@
       "caption": "",
       "uploadedAt": "2026-04-09T22:58:39.645Z",
       "x": 16,
-      "y": 368,
+      "y": 192,
       "cols": 1,
       "rows": 1
     },
@@ -17,8 +17,8 @@
       "originalName": "fukuoka-tsuzura-terrace-field.jpg",
       "caption": "",
       "uploadedAt": "2026-04-09T22:58:39.663Z",
-      "x": 544,
-      "y": 368,
+      "x": 16,
+      "y": 544,
       "cols": 1,
       "rows": 1
     },
@@ -28,8 +28,8 @@
       "originalName": "aichi-inuyama-castle.jpg",
       "caption": "A castle that looks very cool on the top of its little hill, unbelievable",
       "uploadedAt": "2026-04-09T22:58:17.918Z",
-      "x": 192,
-      "y": 368,
+      "x": 368,
+      "y": 16,
       "cols": 1,
       "rows": 1
     },
@@ -39,8 +39,8 @@
       "originalName": "fukushima-kannon-numa-pond.jpg",
       "caption": "",
       "uploadedAt": "2026-04-09T22:58:39.721Z",
-      "x": 368,
-      "y": 368,
+      "x": 192,
+      "y": 192,
       "cols": 1,
       "rows": 1
     },
@@ -50,8 +50,8 @@
       "originalName": "fukuoka-yame-tea-fields.jpg",
       "caption": "",
       "uploadedAt": "2026-04-09T22:58:39.672Z",
-      "x": 544,
-      "y": 16,
+      "x": 368,
+      "y": 544,
       "cols": 1,
       "rows": 1
     },
@@ -63,8 +63,8 @@
       "uploadedAt": "2026-04-09T22:58:39.693Z",
       "x": 16,
       "y": 16,
-      "cols": 3,
-      "rows": 2
+      "cols": 2,
+      "rows": 1
     },
     {
       "id": "img-0e82c1fb",
@@ -72,8 +72,8 @@
       "originalName": "fukushima-goshiki-numa.jpg",
       "caption": "",
       "uploadedAt": "2026-04-09T22:58:39.714Z",
-      "x": 544,
-      "y": 192,
+      "x": 192,
+      "y": 544,
       "cols": 1,
       "rows": 1
     }
