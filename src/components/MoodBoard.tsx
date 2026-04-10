@@ -20,7 +20,6 @@ const MIN_BOARD_HEIGHT = 600;
 const DRAG_THRESHOLD = 5;
 
 const STRIDE = TILE_SIZE + TILE_GAP;
-const MAX_COL = Math.floor((BOARD_WIDTH - BOARD_PAD * 2 - TILE_SIZE) / STRIDE);
 
 /** Pixel size of a tile spanning `cols × rows` cells.
  *  Multi-cell tiles absorb the gap between the cells they span — that's how
@@ -33,8 +32,8 @@ function tileHeight(rows: number) {
 }
 
 /** Snap a free pixel coordinate to the nearest grid cell so tiles always align. */
-function snapToGrid(x: number, y: number): { x: number; y: number } {
-  const col = Math.max(0, Math.min(MAX_COL, Math.round((x - BOARD_PAD) / STRIDE)));
+function snapToGrid(x: number, y: number, maxCol: number): { x: number; y: number } {
+  const col = Math.max(0, Math.min(maxCol, Math.round((x - BOARD_PAD) / STRIDE)));
   const row = Math.max(0, Math.round((y - BOARD_PAD) / STRIDE));
   return { x: BOARD_PAD + col * STRIDE, y: BOARD_PAD + row * STRIDE };
 }
@@ -107,6 +106,25 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
   const captionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef<MoodBoard>(initial);
   const boardRef = useRef<HTMLDivElement>(null);
+
+  // Measure the board's actual pixel width so the snap grid adapts to the
+  // available space instead of overflowing with a fixed 1200 px.
+  const [boardWidth, setBoardWidth] = useState(BOARD_WIDTH);
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    setBoardWidth(el.clientWidth);
+    const obs = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setBoardWidth(w);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  const maxCol = useMemo(
+    () => Math.max(0, Math.floor((boardWidth - BOARD_PAD * 2 - TILE_SIZE) / STRIDE)),
+    [boardWidth],
+  );
 
   useEffect(() => {
     latest.current = moodBoard;
@@ -253,7 +271,7 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
     if (!rect) return;
     const rawX = e.clientX - rect.left - drag.offsetX;
     const rawY = e.clientY - rect.top - drag.offsetY;
-    const { x: newX, y: newY } = snapToGrid(rawX, rawY);
+    const { x: newX, y: newY } = snapToGrid(rawX, rawY, maxCol);
 
     // With snapping, every cell is either occupied or empty — a swap is just
     // another tile sitting on the exact destination cell.
@@ -357,7 +375,7 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
       // Clamp so the tile stays inside the board's right edge.
       const maxCols = Math.max(
         1,
-        Math.floor((BOARD_WIDTH - BOARD_PAD - resize.tileX + TILE_GAP) / STRIDE),
+        Math.floor((boardWidth - BOARD_PAD - resize.tileX + TILE_GAP) / STRIDE),
       );
       newCols = Math.min(requested, maxCols);
     }
@@ -513,8 +531,8 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
       >
         <div
           ref={boardRef}
-          className="relative bg-surface-light"
-          style={{ width: BOARD_WIDTH, height: boardHeight }}
+          className="relative bg-surface-light w-full"
+          style={{ height: boardHeight }}
         >
           {total === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-text-muted text-sm pointer-events-none">
