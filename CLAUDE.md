@@ -42,7 +42,7 @@ Plain catalog: `id`, `name`, `role`, `description`, `color`. Saved as a single a
 
 ### Settings
 
-`BookSettings` holds title, author, illustrator, story (long-form), ambiance (long-form), `totalPages`, and `colorScheme`. Defaults are merged in via spread on read, so existing settings files automatically pick up new fields.
+`BookSettings` holds title, author, illustrator, story (long-form), `totalPages`, and `colorScheme`. Defaults are merged in via spread on read, so existing settings files automatically pick up new fields. The mood board (notes + uploaded images) lives in its own `data/mood-board.json`, not in settings.
 
 ## Visual BD page (`src/components/BdPage.tsx`)
 

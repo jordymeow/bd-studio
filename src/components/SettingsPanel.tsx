@@ -52,7 +52,7 @@ export default function SettingsPanel({ settings: initial }: Props) {
     setDirty(true);
     setSaved(false);
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => persist(), 300);
+    saveTimer.current = setTimeout(() => persist(), 400);
   }, [persist]);
 
   useEffect(() => {
