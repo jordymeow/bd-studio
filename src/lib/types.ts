@@ -17,6 +17,10 @@ export interface MoodBoardImage {
   originalName: string; // original upload filename, shown as fallback
   caption: string;      // free-form note for this image — shown in the tile and in the lightbox
   uploadedAt: string;   // ISO timestamp
+  x: number;            // top-left position on the board, in pixels
+  y: number;
+  cols: number;         // tile spans cols × rows grid cells (default 1)
+  rows: number;
 }
 
 export interface MoodBoard {

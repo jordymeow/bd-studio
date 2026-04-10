@@ -2,7 +2,6 @@ import type { APIRoute } from 'astro';
 import fs from 'node:fs';
 import path from 'node:path';
 import { addMoodBoardImage, generateId, UPLOADS_DIR } from '../../../lib/data';
-import type { MoodBoardImage } from '../../../lib/types';
 
 const ALLOWED_EXT: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -37,16 +36,15 @@ export const POST: APIRoute = async ({ request }) => {
     const buffer = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(filepath, buffer);
 
-    const image: MoodBoardImage = {
+    const placed = addMoodBoardImage({
       id,
       filename,
       originalName: file.name,
       caption: '',
       uploadedAt: new Date().toISOString(),
-    };
-    addMoodBoardImage(image);
+    });
 
-    return Response.json(image);
+    return Response.json(placed);
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 400 });
   }

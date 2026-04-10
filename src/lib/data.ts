@@ -163,26 +163,85 @@ export function saveSettings(settings: BookSettings) {
 
 // ─── Mood board ───────────────────────────────────────────────────────
 
+/**
+ * Layout constants for the free-form mood board canvas.
+ * The frontend uses the same values so newly-uploaded images snap to a tidy
+ * starting grid before the user moves them around.
+ */
+export const MOODBOARD_TILE_SIZE = 160;
+export const MOODBOARD_TILE_GAP = 16;
+export const MOODBOARD_BOARD_PAD = 16;
+export const MOODBOARD_BOARD_WIDTH = 1200;
+
 const DEFAULT_MOODBOARD: MoodBoard = { images: [] };
 
-export function getMoodBoard(): MoodBoard {
-  if (fs.existsSync(MOODBOARD_FILE)) {
-    return { ...DEFAULT_MOODBOARD, ...readJson<Partial<MoodBoard>>(MOODBOARD_FILE, {}) };
+/** True if any tile (which may span multiple cells) covers the cell starting at (x, y). */
+function isCellOccupied(existing: MoodBoardImage[], x: number, y: number): boolean {
+  return existing.some(img => {
+    const right = img.x + img.cols * MOODBOARD_TILE_SIZE + (img.cols - 1) * MOODBOARD_TILE_GAP;
+    const bottom = img.y + img.rows * MOODBOARD_TILE_SIZE + (img.rows - 1) * MOODBOARD_TILE_GAP;
+    // Treat the cell as occupied if its top-left lands within an existing tile's box.
+    return x >= img.x - 4 && x < right - 4 && y >= img.y - 4 && y < bottom - 4;
+  });
+}
+
+/** Find the first empty grid cell so new uploads don't pile on top of each other. */
+function findEmptySlot(existing: MoodBoardImage[]): { x: number; y: number } {
+  const stride = MOODBOARD_TILE_SIZE + MOODBOARD_TILE_GAP;
+  const cols = Math.max(1, Math.floor((MOODBOARD_BOARD_WIDTH - MOODBOARD_BOARD_PAD * 2 + MOODBOARD_TILE_GAP) / stride));
+  for (let row = 0; row < 1000; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x = MOODBOARD_BOARD_PAD + col * stride;
+      const y = MOODBOARD_BOARD_PAD + row * stride;
+      if (!isCellOccupied(existing, x, y)) return { x, y };
+    }
   }
-  // On first read, seed an empty mood board file so subsequent reads are cheap.
-  saveMoodBoard(DEFAULT_MOODBOARD);
-  return DEFAULT_MOODBOARD;
+  return { x: MOODBOARD_BOARD_PAD, y: MOODBOARD_BOARD_PAD };
+}
+
+export function getMoodBoard(): MoodBoard {
+  const raw = fs.existsSync(MOODBOARD_FILE)
+    ? { ...DEFAULT_MOODBOARD, ...readJson<Partial<MoodBoard>>(MOODBOARD_FILE, {}) }
+    : DEFAULT_MOODBOARD;
+
+  // Migrate any legacy images:
+  // - missing x/y → place in next free grid cell
+  // - missing cols/rows → default to 1×1
+  // We persist the migrated layout so subsequent reads are pure.
+  let needsSave = false;
+  const positioned: MoodBoardImage[] = [];
+  for (const img of raw.images) {
+    const cols = typeof img.cols === 'number' && img.cols > 0 ? img.cols : 1;
+    const rows = typeof img.rows === 'number' && img.rows > 0 ? img.rows : 1;
+    if (img.cols !== cols || img.rows !== rows) needsSave = true;
+
+    if (typeof img.x === 'number' && typeof img.y === 'number') {
+      positioned.push({ ...img, cols, rows });
+    } else {
+      const slot = findEmptySlot(positioned);
+      positioned.push({ ...img, x: slot.x, y: slot.y, cols, rows });
+      needsSave = true;
+    }
+  }
+
+  const board: MoodBoard = { ...raw, images: positioned };
+  if (needsSave || !fs.existsSync(MOODBOARD_FILE)) saveMoodBoard(board);
+  return board;
 }
 
 export function saveMoodBoard(moodBoard: MoodBoard) {
   writeJson(MOODBOARD_FILE, moodBoard);
 }
 
-export function addMoodBoardImage(image: MoodBoardImage) {
+export function addMoodBoardImage(
+  image: Omit<MoodBoardImage, 'x' | 'y' | 'cols' | 'rows'>,
+): MoodBoardImage {
   const board = getMoodBoard();
-  board.images.push(image);
+  const slot = findEmptySlot(board.images);
+  const placed: MoodBoardImage = { ...image, x: slot.x, y: slot.y, cols: 1, rows: 1 };
+  board.images.push(placed);
   saveMoodBoard(board);
-  return image;
+  return placed;
 }
 
 /** Remove an image's metadata and return its filename so the caller can delete the file. */
@@ -193,4 +252,30 @@ export function removeMoodBoardImage(id: string): string | null {
   board.images = board.images.filter(i => i.id !== id);
   saveMoodBoard(board);
   return image.filename;
+}
+
+export interface MoodBoardLayoutUpdate {
+  id: string;
+  x?: number;
+  y?: number;
+  cols?: number;
+  rows?: number;
+}
+
+/** Apply layout updates (position and/or size) from the canvas. */
+export function updateMoodBoardPositions(updates: MoodBoardLayoutUpdate[]) {
+  const board = getMoodBoard();
+  const byId = new Map(updates.map(u => [u.id, u]));
+  board.images = board.images.map(img => {
+    const u = byId.get(img.id);
+    if (!u) return img;
+    return {
+      ...img,
+      ...(u.x !== undefined ? { x: u.x } : {}),
+      ...(u.y !== undefined ? { y: u.y } : {}),
+      ...(u.cols !== undefined ? { cols: u.cols } : {}),
+      ...(u.rows !== undefined ? { rows: u.rows } : {}),
+    };
+  });
+  saveMoodBoard(board);
 }
