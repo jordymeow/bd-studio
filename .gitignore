@@ -25,3 +25,8 @@ pnpm-debug.log*
 
 # Claude Code local settings
 .claude/
+
+# Per-environment data — chapters, characters, settings, mood board JSON,
+# and uploaded images. These belong to whichever instance is running, not
+# the repo. The data layer recreates the files on demand on first read.
+data/
