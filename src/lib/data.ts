@@ -117,6 +117,13 @@ export function deleteChapter(id: string): boolean {
   if (filtered.length === chapters.length) return false;
   filtered.sort((a, b) => a.order - b.order).forEach((c, i) => (c.order = i + 1));
   saveChapters(filtered);
+
+  // Cascade: drop the chapter's mood board scope and unlink its image files.
+  const orphans = deleteMoodBoardScope(chapterMoodBoardScope(id));
+  for (const filename of orphans) {
+    const filepath = path.join(UPLOADS_DIR, filename);
+    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+  }
   return true;
 }
 
@@ -173,7 +180,24 @@ export const MOODBOARD_TILE_GAP = 16;
 export const MOODBOARD_BOARD_PAD = 16;
 export const MOODBOARD_BOARD_WIDTH = 1200;
 
-const DEFAULT_MOODBOARD: MoodBoard = { images: [] };
+/**
+ * A mood board is scoped — there's one for the overall story and one per
+ * chapter. Scopes are plain strings: "story" for the book-level board,
+ * "chapter:<id>" for each chapter's board.
+ */
+export type MoodBoardScope = string;
+type MoodBoardMap = Record<MoodBoardScope, MoodBoard>;
+
+export const STORY_MOODBOARD_SCOPE: MoodBoardScope = 'story';
+export function chapterMoodBoardScope(chapterId: string): MoodBoardScope {
+  return `chapter:${chapterId}`;
+}
+
+export function isValidMoodBoardScope(scope: unknown): scope is MoodBoardScope {
+  if (typeof scope !== 'string') return false;
+  if (scope === STORY_MOODBOARD_SCOPE) return true;
+  return /^chapter:[A-Za-z0-9_-]+$/.test(scope);
+}
 
 /** True if any tile (which may span multiple cells) covers the cell starting at (x, y). */
 function isCellOccupied(existing: MoodBoardImage[], x: number, y: number): boolean {
@@ -199,58 +223,93 @@ function findEmptySlot(existing: MoodBoardImage[]): { x: number; y: number } {
   return { x: MOODBOARD_BOARD_PAD, y: MOODBOARD_BOARD_PAD };
 }
 
-export function getMoodBoard(): MoodBoard {
-  const raw = fs.existsSync(MOODBOARD_FILE)
-    ? { ...DEFAULT_MOODBOARD, ...readJson<Partial<MoodBoard>>(MOODBOARD_FILE, {}) }
-    : DEFAULT_MOODBOARD;
+/**
+ * Read the whole scoped mood board map from disk. Legacy flat shape
+ * `{ images: [...] }` is migrated on first read into the "story" scope so
+ * existing installs keep their board as the overall story board.
+ */
+function readMoodBoardMap(): MoodBoardMap {
+  if (!fs.existsSync(MOODBOARD_FILE)) return {};
+  const raw = readJson<Record<string, unknown>>(MOODBOARD_FILE, {});
+  if (Array.isArray((raw as { images?: unknown }).images)) {
+    const legacy = raw as unknown as MoodBoard;
+    const migrated: MoodBoardMap = { [STORY_MOODBOARD_SCOPE]: legacy };
+    writeJson(MOODBOARD_FILE, migrated);
+    return migrated;
+  }
+  return raw as MoodBoardMap;
+}
 
-  // Migrate any legacy images:
-  // - missing x/y → place in next free grid cell
-  // - missing cols/rows → default to 1×1
-  // We persist the migrated layout so subsequent reads are pure.
-  let needsSave = false;
+function writeMoodBoardMap(map: MoodBoardMap) {
+  writeJson(MOODBOARD_FILE, map);
+}
+
+/** Return every scope's mood board — used by export. */
+export function getAllMoodBoards(): MoodBoardMap {
+  return readMoodBoardMap();
+}
+
+/** Replace the entire mood board file — used by import. */
+export function replaceAllMoodBoards(map: MoodBoardMap) {
+  writeMoodBoardMap(map);
+}
+
+/**
+ * Normalize any legacy images in a scope (missing x/y/cols/rows) so the rest
+ * of the pipeline can assume fully-positioned tiles.
+ */
+function normalizeBoard(raw: MoodBoard | undefined): { board: MoodBoard; changed: boolean } {
+  const images = raw?.images ?? [];
+  let changed = false;
   const positioned: MoodBoardImage[] = [];
-  for (const img of raw.images) {
+  for (const img of images) {
     const cols = typeof img.cols === 'number' && img.cols > 0 ? img.cols : 1;
     const rows = typeof img.rows === 'number' && img.rows > 0 ? img.rows : 1;
-    if (img.cols !== cols || img.rows !== rows) needsSave = true;
-
+    if (img.cols !== cols || img.rows !== rows) changed = true;
     if (typeof img.x === 'number' && typeof img.y === 'number') {
       positioned.push({ ...img, cols, rows });
     } else {
       const slot = findEmptySlot(positioned);
       positioned.push({ ...img, x: slot.x, y: slot.y, cols, rows });
-      needsSave = true;
+      changed = true;
     }
   }
+  return { board: { images: positioned }, changed };
+}
 
-  const board: MoodBoard = { ...raw, images: positioned };
-  if (needsSave || !fs.existsSync(MOODBOARD_FILE)) saveMoodBoard(board);
+export function getMoodBoard(scope: MoodBoardScope): MoodBoard {
+  const map = readMoodBoardMap();
+  const { board, changed } = normalizeBoard(map[scope]);
+  if (changed) {
+    map[scope] = board;
+    writeMoodBoardMap(map);
+  }
   return board;
 }
 
-export function saveMoodBoard(moodBoard: MoodBoard) {
-  writeJson(MOODBOARD_FILE, moodBoard);
+export function saveMoodBoard(scope: MoodBoardScope, moodBoard: MoodBoard) {
+  const map = readMoodBoardMap();
+  map[scope] = moodBoard;
+  writeMoodBoardMap(map);
 }
 
 export function addMoodBoardImage(
+  scope: MoodBoardScope,
   image: Omit<MoodBoardImage, 'x' | 'y' | 'cols' | 'rows'>,
 ): MoodBoardImage {
-  const board = getMoodBoard();
+  const board = getMoodBoard(scope);
   const slot = findEmptySlot(board.images);
   const placed: MoodBoardImage = { ...image, x: slot.x, y: slot.y, cols: 1, rows: 1 };
-  board.images.push(placed);
-  saveMoodBoard(board);
+  saveMoodBoard(scope, { images: [...board.images, placed] });
   return placed;
 }
 
 /** Remove an image's metadata and return its filename so the caller can delete the file. */
-export function removeMoodBoardImage(id: string): string | null {
-  const board = getMoodBoard();
+export function removeMoodBoardImage(scope: MoodBoardScope, id: string): string | null {
+  const board = getMoodBoard(scope);
   const image = board.images.find(i => i.id === id);
   if (!image) return null;
-  board.images = board.images.filter(i => i.id !== id);
-  saveMoodBoard(board);
+  saveMoodBoard(scope, { images: board.images.filter(i => i.id !== id) });
   return image.filename;
 }
 
@@ -263,10 +322,10 @@ export interface MoodBoardLayoutUpdate {
 }
 
 /** Apply layout updates (position and/or size) from the canvas. */
-export function updateMoodBoardPositions(updates: MoodBoardLayoutUpdate[]) {
-  const board = getMoodBoard();
+export function updateMoodBoardPositions(scope: MoodBoardScope, updates: MoodBoardLayoutUpdate[]) {
+  const board = getMoodBoard(scope);
   const byId = new Map(updates.map(u => [u.id, u]));
-  board.images = board.images.map(img => {
+  const images = board.images.map(img => {
     const u = byId.get(img.id);
     if (!u) return img;
     return {
@@ -277,5 +336,19 @@ export function updateMoodBoardPositions(updates: MoodBoardLayoutUpdate[]) {
       ...(u.rows !== undefined ? { rows: u.rows } : {}),
     };
   });
-  saveMoodBoard(board);
+  saveMoodBoard(scope, { images });
+}
+
+/**
+ * Drop a whole scope (used when deleting a chapter). Returns the filenames
+ * of the now-orphaned images so the caller can unlink them from disk.
+ */
+export function deleteMoodBoardScope(scope: MoodBoardScope): string[] {
+  const map = readMoodBoardMap();
+  const board = map[scope];
+  if (!board) return [];
+  const filenames = board.images.map(i => i.filename);
+  delete map[scope];
+  writeMoodBoardMap(map);
+  return filenames;
 }

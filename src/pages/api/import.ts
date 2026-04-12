@@ -1,21 +1,23 @@
 import type { APIRoute } from 'astro';
 import {
   isValidPageCount,
+  replaceAllMoodBoards,
   saveChapters,
   saveCharacters,
-  saveMoodBoard,
   saveSettings,
+  STORY_MOODBOARD_SCOPE,
 } from '../../lib/data';
 import type { BookSettings, Chapter, Character, MoodBoard } from '../../lib/types';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { settings, chapters, characters, moodBoard } = body as {
+    const { settings, chapters, characters, moodBoards, moodBoard } = body as {
       settings?: BookSettings;
       chapters?: Chapter[];
       characters?: Character[];
-      moodBoard?: MoodBoard;
+      moodBoards?: Record<string, MoodBoard>;
+      moodBoard?: MoodBoard; // legacy single-scope backups
     };
 
     if (!settings || !Array.isArray(chapters) || !Array.isArray(characters)) {
@@ -25,7 +27,6 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Validate every chapter's pageCount before touching disk
     for (const ch of chapters) {
       if (!isValidPageCount(ch.pageCount)) {
         return Response.json(
@@ -44,9 +45,12 @@ export const POST: APIRoute = async ({ request }) => {
     saveSettings(settings);
     saveChapters(chapters);
     saveCharacters(characters);
-    // Mood board is optional for backward compat with older backups.
-    if (moodBoard && Array.isArray(moodBoard.images)) {
-      saveMoodBoard(moodBoard);
+
+    if (moodBoards && typeof moodBoards === 'object') {
+      replaceAllMoodBoards(moodBoards);
+    } else if (moodBoard && Array.isArray(moodBoard.images)) {
+      // Legacy backups stored a single flat moodBoard → put it under "story".
+      replaceAllMoodBoards({ [STORY_MOODBOARD_SCOPE]: moodBoard });
     }
 
     return Response.json({
@@ -54,7 +58,6 @@ export const POST: APIRoute = async ({ request }) => {
       counts: {
         chapters: chapters.length,
         characters: characters.length,
-        images: moodBoard?.images?.length ?? 0,
       },
     });
   } catch (e) {

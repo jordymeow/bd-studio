@@ -1,11 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import StoryEditor from '../components/StoryEditor';
-import { getSettings } from '../lib/data';
+import { getSettings, getMoodBoard, STORY_MOODBOARD_SCOPE } from '../lib/data';
 
 const settings = getSettings();
+const moodBoard = getMoodBoard(STORY_MOODBOARD_SCOPE);
 ---
 
 <Layout title="Story">
-  <StoryEditor settings={settings} client:load />
+  <StoryEditor settings={settings} moodBoard={moodBoard} client:load />
 </Layout>

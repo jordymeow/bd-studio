@@ -2,7 +2,7 @@
 import '../styles/global.css';
 import { getChapters, getSettings } from '../lib/data';
 import { getColorScheme, colorSchemeToCssVars } from '../lib/color-schemes';
-import { BookOpen, Users, Sparkles, LayoutGrid, Download, Settings, FileText, PanelLeft } from '@lucide/astro';
+import { BookOpen, Users, Sparkles, Download, Settings, FileText, PanelLeft } from '@lucide/astro';
 
 interface Props {
   title: string;
@@ -20,7 +20,6 @@ const navItems = [
   { href: '/', label: 'Chapters', icon: BookOpen },
   { href: '/characters', label: 'Characters', icon: Users },
   { href: '/story', label: 'Story', icon: Sparkles },
-  { href: '/mood-board', label: 'Mood Board', icon: LayoutGrid },
   { href: '/export', label: 'Export', icon: Download },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];

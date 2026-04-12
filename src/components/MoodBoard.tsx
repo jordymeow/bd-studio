@@ -6,6 +6,8 @@ import { Button } from './ui/button';
 import { url } from '../lib/base';
 
 interface Props {
+  /** Which board this instance is editing — e.g. "story" or "chapter:<id>". */
+  scope: string;
   moodBoard: MoodBoard;
 }
 
@@ -90,8 +92,9 @@ interface ResizeState {
   currentRows: number;
 }
 
-export default function MoodBoardComponent({ moodBoard: initial }: Props) {
+export default function MoodBoardComponent({ scope, moodBoard: initial }: Props) {
   const [moodBoard, setMoodBoard] = useState<MoodBoard>(initial);
+  const scopeQuery = `scope=${encodeURIComponent(scope)}`;
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -134,7 +137,7 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
   const persistCaptions = useCallback(async () => {
     setSaving(true);
     try {
-      await fetch(url('/api/mood-board'), {
+      await fetch(url(`/api/mood-board?${scopeQuery}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(latest.current),
@@ -145,7 +148,7 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [scopeQuery]);
 
   const scheduleCaptionSave = useCallback(() => {
     setDirty(true);
@@ -162,7 +165,7 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
       setSaving(true);
       setDirty(true);
       try {
-        await fetch(url('/api/mood-board/positions'), {
+        await fetch(url(`/api/mood-board/positions?${scopeQuery}`), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ updates }),
@@ -174,7 +177,7 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
         setSaving(false);
       }
     },
-    [],
+    [scopeQuery],
   );
 
   useEffect(() => {
@@ -192,33 +195,36 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
   };
 
   // ─── Upload ────────────────────────────────────────────────────────
-  const uploadFiles = useCallback(async (files: FileList | File[]) => {
-    const list = Array.from(files).filter(f => f.type.startsWith('image/'));
-    if (list.length === 0) return;
+  const uploadFiles = useCallback(
+    async (files: FileList | File[]) => {
+      const list = Array.from(files).filter(f => f.type.startsWith('image/'));
+      if (list.length === 0) return;
 
-    setUploading(true);
-    setUploadError('');
-    try {
-      for (const file of list) {
-        const formData = new FormData();
-        formData.append('file', file);
-        const res = await fetch(url('/api/mood-board/upload'), {
-          method: 'POST',
-          body: formData,
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || `Upload failed for ${file.name}`);
+      setUploading(true);
+      setUploadError('');
+      try {
+        for (const file of list) {
+          const formData = new FormData();
+          formData.append('file', file);
+          const res = await fetch(url(`/api/mood-board/upload?${scopeQuery}`), {
+            method: 'POST',
+            body: formData,
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `Upload failed for ${file.name}`);
+          }
+          const image: MoodBoardImage = await res.json();
+          setMoodBoard(prev => ({ ...prev, images: [...prev.images, image] }));
         }
-        const image: MoodBoardImage = await res.json();
-        setMoodBoard(prev => ({ ...prev, images: [...prev.images, image] }));
+      } catch (e) {
+        setUploadError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setUploading(false);
       }
-    } catch (e) {
-      setUploadError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setUploading(false);
-    }
-  }, []);
+    },
+    [scopeQuery],
+  );
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) uploadFiles(e.target.files);
@@ -417,7 +423,9 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
   // ─── Delete ────────────────────────────────────────────────────────
   const deleteImage = async (id: string) => {
     if (!confirm('Delete this image? This cannot be undone.')) return;
-    const res = await fetch(url(`/api/mood-board/images/${id}`), { method: 'DELETE' });
+    const res = await fetch(url(`/api/mood-board/images/${id}?${scopeQuery}`), {
+      method: 'DELETE',
+    });
     if (res.ok) {
       const remainingCount = moodBoard.images.length - 1;
       setMoodBoard(prev => ({ ...prev, images: prev.images.filter(i => i.id !== id) }));
@@ -495,7 +503,7 @@ export default function MoodBoardComponent({ moodBoard: initial }: Props) {
   }, [liveImages]);
 
   return (
-    <div className="max-w-6xl">
+    <div>
       <div className="flex items-center justify-between mb-6 h-6">
         <div className="flex items-center gap-2">
           {uploadError && <span className="text-xs text-danger">{uploadError}</span>}

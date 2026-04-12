@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Copy, Download, Check, Upload } from 'lucide-react';
+import { Copy, Download, Check, Upload, Archive } from 'lucide-react';
 import { Button } from './ui/button';
 import { url } from '../lib/base';
 
@@ -74,8 +74,6 @@ export default function ExportPanel() {
     fetchExport();
   }, [fetchExport]);
 
-  const filename = 'bd-editor-backup.json';
-
   const copyToClipboard = useCallback(async () => {
     await navigator.clipboard.writeText(jsonData);
     setCopied(true);
@@ -87,10 +85,16 @@ export default function ExportPanel() {
     const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = objectUrl;
-    a.download = filename;
+    a.download = 'bd-editor-backup.json';
     a.click();
     URL.revokeObjectURL(objectUrl);
   }, [jsonData]);
+
+  const downloadZip = useCallback(() => {
+    const a = document.createElement('a');
+    a.href = url('/api/export-zip');
+    a.click();
+  }, []);
 
   const handleImportClick = () => fileInputRef.current?.click();
 
@@ -135,24 +139,36 @@ export default function ExportPanel() {
           <h3 className="text-xs text-text-muted uppercase tracking-wider">Backup</h3>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" size="sm" onClick={handleImportClick} disabled={importing}>
-            <Upload size={14} /> {importing ? 'Restoring…' : 'Restore from JSON'}
+          <Button variant="secondary" size="sm" onClick={downloadZip}>
+            <Archive size={14} /> Download ZIP backup
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json,.json"
-            onChange={handleFileSelected}
-            className="hidden"
-          />
-          <span className="text-xs text-text-muted">Replaces all existing data</span>
+          <span className="text-xs text-text-muted">JSON data + all uploaded images</span>
         </div>
-        {importError && <p className="text-xs text-danger mt-2">{importError}</p>}
       </div>
 
       <div>
         <div className="mb-3">
-          <h3 className="text-xs text-text-muted uppercase tracking-wider">Export</h3>
+          <h3 className="text-xs text-text-muted uppercase tracking-wider">Restore</h3>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" size="sm" onClick={handleImportClick} disabled={importing}>
+            <Upload size={14} /> {importing ? 'Restoring…' : 'Restore from JSON'}
+          </Button>
+          <span className="text-xs text-text-muted">Replaces all existing data (JSON only, not images)</span>
+        </div>
+        {importError && <p className="text-xs text-danger mt-2">{importError}</p>}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handleFileSelected}
+          className="hidden"
+        />
+      </div>
+
+      <div>
+        <div className="mb-3">
+          <h3 className="text-xs text-text-muted uppercase tracking-wider">JSON preview</h3>
         </div>
 
         <div className="flex items-center gap-2 mb-3">
@@ -167,10 +183,9 @@ export default function ExportPanel() {
               </>
             )}
           </Button>
-          <Button variant="secondary" size="sm" onClick={downloadJson} disabled={!jsonData || loading}>
-            <Download size={14} /> Download
+          <Button variant="ghost" size="sm" onClick={downloadJson} disabled={!jsonData || loading}>
+            <Download size={14} /> Download JSON only
           </Button>
-          <span className="text-xs text-text-muted ml-2">{filename}</span>
         </div>
 
         <div className="relative rounded-md border border-border overflow-hidden">

@@ -1,7 +1,12 @@
 import type { APIRoute } from 'astro';
 import fs from 'node:fs';
 import path from 'node:path';
-import { addMoodBoardImage, generateId, UPLOADS_DIR } from '../../../lib/data';
+import {
+  addMoodBoardImage,
+  generateId,
+  isValidMoodBoardScope,
+  UPLOADS_DIR,
+} from '../../../lib/data';
 
 const ALLOWED_EXT: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -11,8 +16,13 @@ const ALLOWED_EXT: Record<string, string> = {
   'image/gif': '.gif',
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, url }) => {
   try {
+    const scope = url.searchParams.get('scope');
+    if (!isValidMoodBoardScope(scope)) {
+      return Response.json({ error: 'Invalid scope' }, { status: 400 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file');
 
@@ -36,7 +46,7 @@ export const POST: APIRoute = async ({ request }) => {
     const buffer = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(filepath, buffer);
 
-    const placed = addMoodBoardImage({
+    const placed = addMoodBoardImage(scope, {
       id,
       filename,
       originalName: file.name,

@@ -1,7 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import ChapterDetail from '../../../components/ChapterDetail';
-import { getChapter } from '../../../lib/data';
+import { getChapter, getMoodBoard, chapterMoodBoardScope } from '../../../lib/data';
 
 const { id } = Astro.params;
 const chapter = getChapter(id!);
@@ -9,8 +9,10 @@ const chapter = getChapter(id!);
 if (!chapter) {
   return Astro.redirect(import.meta.env.BASE_URL);
 }
+
+const moodBoard = getMoodBoard(chapterMoodBoardScope(chapter.id));
 ---
 
 <Layout title={chapter.title}>
-  <ChapterDetail chapter={chapter} client:load />
+  <ChapterDetail chapter={chapter} moodBoard={moodBoard} client:load />
 </Layout>

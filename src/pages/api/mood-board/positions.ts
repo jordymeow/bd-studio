@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { updateMoodBoardPositions } from '../../../lib/data';
+import { isValidMoodBoardScope, updateMoodBoardPositions } from '../../../lib/data';
 import type { MoodBoardLayoutUpdate } from '../../../lib/data';
 
 function isValidUpdate(u: unknown): u is MoodBoardLayoutUpdate {
@@ -13,7 +13,11 @@ function isValidUpdate(u: unknown): u is MoodBoardLayoutUpdate {
   return true;
 }
 
-export const PUT: APIRoute = async ({ request }) => {
+export const PUT: APIRoute = async ({ request, url }) => {
+  const scope = url.searchParams.get('scope');
+  if (!isValidMoodBoardScope(scope)) {
+    return Response.json({ error: 'Invalid scope' }, { status: 400 });
+  }
   const body = await request.json();
   const updates = body?.updates;
   if (!Array.isArray(updates) || !updates.every(isValidUpdate)) {
@@ -22,6 +26,6 @@ export const PUT: APIRoute = async ({ request }) => {
       { status: 400 },
     );
   }
-  updateMoodBoardPositions(updates);
+  updateMoodBoardPositions(scope, updates);
   return Response.json({ ok: true });
 };
